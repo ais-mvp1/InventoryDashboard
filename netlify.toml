@@ -1,0 +1,14 @@
+# https://docs.netlify.com/configure-builds/file-based-configuration/
+
+[build]
+  command = "npm run build"
+  publish = "dist"
+
+[build.environment]
+  NODE_VERSION = "20"
+
+# Single Page App: send unknown paths to index.html (safe for Vite client-side routes)
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200
