@@ -12,15 +12,17 @@ import {
   rowMatchesEquipmentFilter,
   formatYearMonthLabel,
 } from "./lib/parseEquipment";
+import { FleetChat } from "./components/FleetChat";
 import { KPICard } from "./components/KPICard";
 
-type TabId = "overview" | "repairs" | "inventory" | "parts";
+type TabId = "overview" | "repairs" | "inventory" | "parts" | "ask";
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
   { id: "repairs", label: "Repairs & installs" },
   { id: "inventory", label: "Inventory" },
   { id: "parts", label: "All parts" },
+  { id: "ask", label: "Ask" },
 ];
 
 function matchesSearch(p: PartRow | InstallRow, q: string): boolean {
@@ -313,7 +315,8 @@ export default function App() {
             from suggestions. Month uses calendar month for installs on Repairs and sale/purchase
             dates on Parts. Use <strong>Repairs &amp; installs</strong> + truck + month for history;
             clear Month and search <strong>clutch</strong> to see every month that truck had that
-            part (Period column shows which file/month snapshot).
+            part (Period column shows which file/month snapshot). Use the <strong>Ask</strong> tab
+            for plain-English questions (e.g. clutch install date for a unit number).
           </p>
 
           <input
@@ -640,6 +643,14 @@ export default function App() {
               </table>
             </div>
           </section>
+        )}
+
+        {tab === "ask" && (
+          <FleetChat
+            installations={baseInstalls}
+            parts={baseParts}
+            showPeriodColumn={showPeriodColumn}
+          />
         )}
 
         {tab === "parts" && (
