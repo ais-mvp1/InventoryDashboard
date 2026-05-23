@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { InstallRow, PartRow } from "./types";
-import { useMergedDashboard } from "./hooks/useMergedDashboard";
+import { Link } from "react-router-dom";
+import { useAuth } from "./context/AuthContext";
+import { useOrgInventory } from "./context/DashboardDataContext";
 import { BUNDLED_BATCH_ID } from "./lib/mergeDashboard";
 import {
   collectEquipmentLabels,
@@ -39,9 +41,22 @@ function matchesSearch(p: PartRow | InstallRow, q: string): boolean {
 
 export default function App() {
   const {
+    cloudEnabled,
+    session,
+    organization,
+    organizations,
+    orgLoadError,
+    setOrganizationId,
+    signOut,
+  } = useAuth();
+
+  const needsWorkshop =
+    cloudEnabled && session && !organization && organizations.length === 0;
+  const {
     data,
     loading,
     uploads,
+    dataSource,
     hasBundledSnapshot,
     includeBundled,
     setIncludeBundled,
@@ -50,7 +65,7 @@ export default function App() {
     clearUploads,
     uploadError,
     clearUploadError,
-  } = useMergedDashboard();
+  } = useOrgInventory();
   const [equipment, setEquipment] = useState<string>("");
   const [month, setMonth] = useState<string>("");
   const [search, setSearch] = useState("");
@@ -175,8 +190,11 @@ export default function App() {
             Parts & inventory
           </h1>
           <p className="mt-3 text-sm text-slate-600">
-            Add your monthly Excel tracker here. Each month’s file is saved in this browser and
-            merged into one dashboard. Re-uploading the same file name replaces that month’s copy.
+            {dataSource === "cloud" && organization
+              ? `Upload monthly Excel files for “${organization.name}”. Data is stored in your workshop workspace (multi-tenant SaaS).`
+              : dataSource === "cloud"
+                ? "Complete workshop setup while signed in, then upload your monthly Excel files."
+                : "Add your monthly Excel tracker here. Each month’s file is saved in this browser and merged into one dashboard. Re-uploading the same file name replaces that month’s copy."}
           </p>
         </div>
         <input
@@ -223,45 +241,111 @@ export default function App() {
   return (
     <div className="min-h-screen">
       <header className="border-b border-slate-200/80 bg-white/90 backdrop-blur">
-        <div className="mx-auto flex max-w-7xl flex-col gap-4 px-4 py-6 sm:flex-row sm:items-end sm:justify-between lg:px-8">
-          <div>
-            <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">
-              Fleet operations
-            </p>
-            <h1 className="font-display text-2xl font-bold tracking-tight text-surface-900 sm:text-3xl">
-              Parts & inventory
-            </h1>
-            <p className="mt-1 text-sm text-slate-600">
-              {uploads.length > 0
-                ? `${uploads.length} monthly file${uploads.length > 1 ? "s" : ""} saved in this browser`
-                : data.meta.periodLabel}
-              {hasBundledSnapshot && includeBundled ? " · includes packaged snapshot" : ""}
-            </p>
-            <p
-              className="mt-0.5 max-w-2xl truncate text-xs text-slate-500"
-              title={data.meta.sourceFile}
-            >
-              {data.meta.sourceFile}
-            </p>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            {tabs.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setTab(t.id)}
-                className={`rounded-full px-4 py-2 text-sm font-medium transition ${
-                  tab === t.id
-                    ? "bg-surface-900 text-white shadow-md"
-                    : "bg-surface-100 text-slate-700 hover:bg-slate-200"
-                }`}
+        <div className="mx-auto max-w-7xl px-4 py-6 lg:px-8">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
+            <div>
+              <p className="text-xs font-semibold uppercase tracking-widest text-sky-600">
+                Fleet operations
+              </p>
+              <h1 className="font-display text-2xl font-bold tracking-tight text-surface-900 sm:text-3xl">
+                Parts & inventory
+              </h1>
+              <p className="mt-1 text-sm text-slate-600">
+                {dataSource === "cloud"
+                  ? `${uploads.length} monthly file${uploads.length !== 1 ? "s" : ""} in workshop cloud`
+                  : uploads.length > 0
+                    ? `${uploads.length} monthly file${uploads.length > 1 ? "s" : ""} saved in this browser`
+                    : data.meta.periodLabel}
+                {hasBundledSnapshot && includeBundled ? " · includes packaged snapshot" : ""}
+              </p>
+              <p
+                className="mt-0.5 max-w-2xl truncate text-xs text-slate-500"
+                title={data.meta.sourceFile}
               >
-                {t.label}
-              </button>
-            ))}
+                {data.meta.sourceFile}
+              </p>
+            </div>
+            <div className="flex flex-col gap-3 sm:items-end">
+              <nav className="flex flex-wrap items-center gap-2 text-sm font-medium">
+                <Link
+                  className="rounded-full bg-emerald-600 px-3 py-1.5 text-white shadow-sm hover:bg-emerald-700"
+                  to="/scan"
+                >
+                  Scan
+                </Link>
+                <Link
+                  className="rounded-full bg-white px-3 py-1.5 text-slate-800 ring-1 ring-slate-200 hover:bg-slate-50"
+                  to="/reconcile"
+                >
+                  Reconcile
+                </Link>
+                {cloudEnabled && !session ? (
+                  <Link
+                    className="rounded-full bg-white px-3 py-1.5 text-sky-700 ring-1 ring-sky-200 hover:bg-sky-50"
+                    to="/login"
+                  >
+                    Sign in
+                  </Link>
+                ) : null}
+                {cloudEnabled && session ? (
+                  <button
+                    type="button"
+                    onClick={() => void signOut()}
+                    className="rounded-full px-3 py-1.5 text-slate-600 underline decoration-slate-300 hover:text-slate-900"
+                  >
+                    Sign out
+                  </button>
+                ) : null}
+              </nav>
+              {cloudEnabled && session && organizations.length > 1 ? (
+                <label className="flex flex-col gap-1 text-xs text-slate-500 sm:items-end">
+                  <span>Workshop</span>
+                  <select
+                    value={organization?.id ?? ""}
+                    onChange={(e) => setOrganizationId(e.target.value || null)}
+                    className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm text-slate-800"
+                  >
+                    {organizations.map((o) => (
+                      <option key={o.id} value={o.id}>
+                        {o.name}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+              ) : null}
+              <div className="flex flex-wrap justify-end gap-2">
+                {tabs.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    onClick={() => setTab(t.id)}
+                    className={`rounded-full px-4 py-2 text-sm font-medium transition ${
+                      tab === t.id
+                        ? "bg-surface-900 text-white shadow-md"
+                        : "bg-surface-100 text-slate-700 hover:bg-slate-200"
+                    }`}
+                  >
+                    {t.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </div>
         </div>
       </header>
+
+      {needsWorkshop ? (
+        <div className="border-b border-amber-200 bg-amber-50 px-4 py-3 lg:px-8">
+          <p className="mx-auto max-w-7xl text-sm text-amber-950">
+            <strong>Workshop not linked.</strong> Dashboard and Excel work in this browser. For
+            cloud scan and shared uploads,{" "}
+            <Link className="font-semibold text-amber-900 underline" to="/setup">
+              create a workshop
+            </Link>
+            {orgLoadError ? ` — ${orgLoadError}` : "."}
+          </p>
+        </div>
+      ) : null}
 
       <main className="mx-auto max-w-7xl px-4 py-8 lg:px-8">
         {/* Filters */}
