@@ -5,3 +5,13 @@ dist
 .env
 .env.local
 .env.*.local
+
+# Android / Capacitor (keep android/ source; ignore build outputs)
+android/.gradle
+android/**/build
+android/local.properties
+android/.idea
+android/capacitor-cordova-android-plugins
+
+# Optional: large sample data — remove this line if you want data.json in git
+# public/data.json
