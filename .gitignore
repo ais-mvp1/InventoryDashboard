@@ -1,5 +1,6 @@
 node_modules
 dist
+__pycache__/
 .DS_Store
 *.log
 .env
@@ -15,3 +16,6 @@ android/capacitor-cordova-android-plugins
 
 # Optional: large sample data — remove this line if you want data.json in git
 # public/data.json
+
+# Raw QuickBooks exports and generated trackers (financial data, keep local-only)
+quickbook/
