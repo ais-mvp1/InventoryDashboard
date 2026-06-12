@@ -476,6 +476,39 @@ export default function App() {
                 ) : null}
               </div>
             </div>
+            {uploads.length > 0 ? (
+              <ul className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                {uploads.map((u) => (
+                  <li
+                    key={u.id}
+                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
+                  >
+                    <div className="min-w-0">
+                      <span className="font-medium text-slate-800">{u.meta.periodLabel}</span>
+                      <span className="ml-2 truncate text-xs text-slate-500">
+                        {u.meta.sourceFile}
+                      </span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (
+                          window.confirm(
+                            `Delete "${u.meta.periodLabel} — ${u.meta.sourceFile}"? This removes its data from the dashboard.`
+                          )
+                        ) {
+                          if (batchFilter === u.id) setBatchFilter("");
+                          void removeUpload(u.id);
+                        }
+                      }}
+                      className="text-xs font-medium text-red-600 hover:underline"
+                    >
+                      Delete
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : null}
             {uploadError ? (
               <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 {uploadError}{" "}
