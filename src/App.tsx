@@ -17,7 +17,7 @@ import {
 import { FleetChat } from "./components/FleetChat";
 import { KPICard } from "./components/KPICard";
 
-type TabId = "overview" | "repairs" | "inventory" | "parts" | "ask";
+type TabId = "overview" | "repairs" | "inventory" | "parts" | "ask" | "admin";
 
 const tabs: { id: TabId; label: string }[] = [
   { id: "overview", label: "Overview" },
@@ -25,6 +25,7 @@ const tabs: { id: TabId; label: string }[] = [
   { id: "inventory", label: "Inventory" },
   { id: "parts", label: "All parts" },
   { id: "ask", label: "Ask" },
+  { id: "admin", label: "Admin" },
 ];
 
 function matchesSearch(p: PartRow | InstallRow, q: string): boolean {
@@ -383,7 +384,25 @@ export default function App() {
                 ))}
               </select>
             </label>
-            <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-2">
+            <label className="flex flex-col gap-1">
+              <span className="text-xs font-medium text-slate-500">Scope</span>
+              <select
+                value={batchFilter}
+                onChange={(e) => setBatchFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-sky-500/30 focus:ring-2"
+              >
+                <option value="">All files (merged)</option>
+                {hasBundledSnapshot && includeBundled ? (
+                  <option value={BUNDLED_BATCH_ID}>Packaged snapshot only</option>
+                ) : null}
+                {uploads.map((u) => (
+                  <option key={u.id} value={u.id}>
+                    {u.meta.periodLabel} — {u.meta.sourceFile}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label className="flex flex-col gap-1 sm:col-span-2 lg:col-span-1">
               <span className="text-xs font-medium text-slate-500">Product search</span>
               <input
                 type="search"
@@ -403,126 +422,133 @@ export default function App() {
             for plain-English questions (e.g. clutch install date for a unit number).
           </p>
 
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-            className="hidden"
-            onChange={(e) => {
-              const f = e.target.files?.[0];
-              if (f) void addFile(f);
-              e.target.value = "";
-            }}
-          />
-          <div className="mt-6 border-t border-slate-100 pt-6">
-            <p className="font-display text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Monthly Excel files
-            </p>
-            <div className="mt-4 flex flex-col gap-4 lg:flex-row lg:flex-wrap lg:items-end lg:justify-between">
-              <div className="flex flex-col gap-4 sm:flex-row sm:flex-wrap">
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-medium text-slate-500">Scope</span>
-                  <select
-                    value={batchFilter}
-                    onChange={(e) => setBatchFilter(e.target.value)}
-                    className="min-w-[220px] rounded-xl border border-slate-200 bg-white px-3 py-2 text-sm outline-none ring-sky-500/30 focus:ring-2"
-                  >
-                    <option value="">All files (merged)</option>
-                    {hasBundledSnapshot && includeBundled ? (
-                      <option value={BUNDLED_BATCH_ID}>Packaged snapshot only</option>
-                    ) : null}
-                    {uploads.map((u) => (
-                      <option key={u.id} value={u.id}>
-                        {u.meta.periodLabel} — {u.meta.sourceFile}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-                {hasBundledSnapshot ? (
-                  <label className="flex cursor-pointer items-center gap-2 self-center pt-0 text-sm text-slate-600 sm:pt-6">
-                    <input
-                      type="checkbox"
-                      checked={includeBundled}
-                      onChange={(e) => setIncludeBundled(e.target.checked)}
-                      className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
-                    />
-                    Include packaged snapshot
-                  </label>
-                ) : null}
-              </div>
-              <div className="flex flex-wrap items-center gap-2">
+        </section>
+
+        {tab === "admin" && (
+          <section className="rounded-2xl border border-slate-200/80 bg-white p-4 shadow-card sm:p-6">
+            <div className="flex flex-col gap-1">
+              <h2 className="font-display text-lg font-semibold text-slate-900">
+                Data & file management
+              </h2>
+              <p className="text-sm text-slate-600">
+                Upload monthly Excel files, replace a month, or remove data.{" "}
+                {dataSource === "cloud"
+                  ? "Files are stored in your workshop cloud and shared across devices."
+                  : "Files are stored only in this browser."}
+              </p>
+            </div>
+
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+              className="hidden"
+              onChange={(e) => {
+                const f = e.target.files?.[0];
+                if (f) void addFile(f);
+                e.target.value = "";
+              }}
+            />
+
+            <div className="mt-6 flex flex-wrap items-center gap-3">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
+              >
+                Add / replace monthly file…
+              </button>
+              {uploads.length > 0 ? (
                 <button
                   type="button"
-                  onClick={() => fileInputRef.current?.click()}
-                  className="rounded-xl bg-sky-600 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-sky-700"
-                >
-                  Add / replace monthly file…
-                </button>
-                {uploads.length > 0 ? (
-                  <button
-                    type="button"
-                    onClick={() => {
-                      if (
-                        window.confirm(
-                          "Remove all uploaded monthly files from this browser? The packaged snapshot is not removed."
-                        )
+                  onClick={() => {
+                    if (
+                      window.confirm(
+                        "Remove all uploaded monthly files? This clears every month from the dashboard."
                       )
-                        void clearUploads();
-                    }}
-                    className="text-sm font-medium text-red-600 hover:underline"
-                  >
-                    Clear uploads
-                  </button>
-                ) : null}
-              </div>
+                    ) {
+                      setBatchFilter("");
+                      void clearUploads();
+                    }
+                  }}
+                  className="text-sm font-medium text-red-600 hover:underline"
+                >
+                  Clear all uploads
+                </button>
+              ) : null}
+              {hasBundledSnapshot ? (
+                <label className="flex cursor-pointer items-center gap-2 text-sm text-slate-600">
+                  <input
+                    type="checkbox"
+                    checked={includeBundled}
+                    onChange={(e) => setIncludeBundled(e.target.checked)}
+                    className="rounded border-slate-300 text-sky-600 focus:ring-sky-500"
+                  />
+                  Include packaged snapshot
+                </label>
+              ) : null}
             </div>
-            {uploads.length > 0 ? (
-              <ul className="mt-4 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
-                {uploads.map((u) => (
-                  <li
-                    key={u.id}
-                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
-                  >
-                    <div className="min-w-0">
-                      <span className="font-medium text-slate-800">{u.meta.periodLabel}</span>
-                      <span className="ml-2 truncate text-xs text-slate-500">
-                        {u.meta.sourceFile}
-                      </span>
-                    </div>
-                    <button
-                      type="button"
-                      onClick={() => {
-                        if (
-                          window.confirm(
-                            `Delete "${u.meta.periodLabel} — ${u.meta.sourceFile}"? This removes its data from the dashboard.`
-                          )
-                        ) {
-                          if (batchFilter === u.id) setBatchFilter("");
-                          void removeUpload(u.id);
-                        }
-                      }}
-                      className="text-xs font-medium text-red-600 hover:underline"
-                    >
-                      Delete
-                    </button>
-                  </li>
-                ))}
-              </ul>
-            ) : null}
+
             {uploadError ? (
-              <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
+              <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-sm text-red-800">
                 {uploadError}{" "}
                 <button type="button" className="underline" onClick={clearUploadError}>
                   Dismiss
                 </button>
               </p>
             ) : null}
-            <p className="mt-3 text-xs text-slate-500">
-              Same file name as an existing upload replaces that month’s copy. Data is stored only in
-              this browser unless you export elsewhere.
+
+            <div className="mt-6">
+              <p className="font-display text-xs font-semibold uppercase tracking-wide text-slate-500">
+                Monthly Excel files ({uploads.length})
+              </p>
+              {uploads.length > 0 ? (
+                <ul className="mt-3 divide-y divide-slate-100 overflow-hidden rounded-xl border border-slate-200 bg-white">
+                  {uploads.map((u) => (
+                    <li
+                      key={u.id}
+                      className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 text-sm"
+                    >
+                      <div className="min-w-0">
+                        <span className="font-medium text-slate-800">{u.meta.periodLabel}</span>
+                        <span className="ml-2 truncate text-xs text-slate-500">
+                          {u.meta.sourceFile}
+                        </span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (
+                            window.confirm(
+                              `Delete "${u.meta.periodLabel} — ${u.meta.sourceFile}"? This removes its data from the dashboard.`
+                            )
+                          ) {
+                            if (batchFilter === u.id) setBatchFilter("");
+                            void removeUpload(u.id);
+                          }
+                        }}
+                        className="text-xs font-medium text-red-600 hover:underline"
+                      >
+                        Delete
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="mt-3 rounded-xl border border-dashed border-slate-200 bg-slate-50 px-4 py-6 text-center text-sm text-slate-500">
+                  No files uploaded yet. Use “Add / replace monthly file…” to get started.
+                </p>
+              )}
+            </div>
+
+            <p className="mt-4 text-xs text-slate-500">
+              Same file name as an existing upload replaces that month’s copy.{" "}
+              {dataSource === "cloud"
+                ? "Stored in your workshop cloud."
+                : "Data is stored only in this browser unless you connect cloud storage."}
             </p>
-          </div>
-        </section>
+          </section>
+        )}
 
         {tab === "overview" && (
           <>
